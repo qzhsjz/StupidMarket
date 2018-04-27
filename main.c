@@ -18,6 +18,8 @@ int delflag = 0;
 int rstflag = 0;
 int state = 0;
 int s0editflag = 0;
+int s1editflag = 0;
+int s2editflag = 0;
 pnode itemlist = malloc(sizeof(listnode));
 pnode cur = itemlist;
 char id[40] = { 0, };
@@ -54,6 +56,9 @@ int viewupdate(){
 	  printf("Enter new count for such item:%s", kbdbuffer);
   }
   if (state >= 1) { //优惠显示
+	  if (s1editflag) {
+		  printf("(Please input)\n");
+	  }
 	  printf("Discount: %d\n", discount);
   }
   if (state >= 2) { //货款显示
@@ -143,6 +148,22 @@ int ListenKeyboard(){
 		  strcpy(kbdbuffer, "");
 		  kbdbufcur = 0;
 	  }
+	  else if (state == 2) {
+		  //在支付阶段输入货款
+		  int a, b;
+		  char *as, *bs;
+		  as = strtok(kbdbuffer, ".");
+		  bs = strtok(NULL, ".");
+		  if (strlen(bs) == 1) {
+			  strcat(bs, "0");
+		  }
+		  sscanf(as, "%d", &a);
+		  sscanf(bs, "%d", &b);
+		  recv = a * 100 + b;
+		  cash = total - recv;
+		  strcpy(kbdbuffer, "");
+		  kbdbufcur = 0;
+	  }
   }
   else if (key == MWKEY_KP_NUMLOCK) {
 	  // 此键定义为复位
@@ -157,6 +178,8 @@ int ListenKeyboard(){
 		  rstflag = 0;
 		  state = 0;
 		  s0editflag = 0;
+		  s1editflag = 0;
+		  s2editflag = 0;
 		  strcpy(id, "");
 		  total = 0;
 		  discount = 0;
@@ -192,6 +215,12 @@ int ListenKeyboard(){
 	  //此键定义为编辑
 	  if (state == 0) {
 		  s0editflag = 1;
+	  }
+	  else if (state == 1) {
+		  s1editflag = 1;
+	  }
+	  else if (state == 2) {
+		  s2editflag = 1;
 	  }
   }
   else if (key == MWKEY_KP0) {
