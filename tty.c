@@ -119,3 +119,4 @@ int tty_init()
 }
 void tty_fflush(){
         tcflush(fd,TCIFLUSH);
+}

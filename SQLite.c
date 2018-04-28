@@ -1,6 +1,13 @@
 //static int conut = 0;//记录打开的与数据库的连接的个数(或者连接是否存在)
 #include "SQLite.h"
-#include "item.h"
+typedef struct listnode {
+	char id[40];
+	char name[40];
+	int price;
+	int count;
+	struct listnode* next;
+	struct listnode* prev;
+}listnode, *pnode;
 /**
 **
 ** @auther lyj_uptech@126.com
@@ -419,8 +426,8 @@ pnode sqliteDB_market_select_by_id(char *id) {
 		_id = sqlite3_column_text(stmt, 1);
 		price = sqlite3_column_int(stmt, 2);
 		// printf("\t%s\t\t%s\t\t%d\n", _name, _id, price);
-		item->id = _id;
-		item->name = _name;
+		strcpy(item->id, _id);
+		strcpy(item->name, _name);
 		item->price = price;
 		item->count = 1;
 	}

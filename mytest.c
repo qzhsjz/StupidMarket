@@ -1,13 +1,32 @@
-#include "consoleshell.h"
 #include "stdio.h"
+#include "stdlib.h"
 #include "malloc.h"
-#include "string.h"
 #include <fcntl.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include "keyboard.h"
 #define addItem_countplus 1
 #define addItem_add 0
+#define MWKEY_KP_PLUS 43
+#define MWKEY_KP_MINUS 45
+#define MWKEY_KP_NUMLOCK 0
+#define MWKEY_KP_MULTIPLY 42
+#define MWKEY_KP_ENTER 13
+#define MWKEY_KP_DEL 46
+#define MWKEY_KP0 48
+#define MWKEY_KP1 49
+#define MWKEY_KP2 50
+#define MWKEY_KP3 51
+#define MWKEY_KP4 52
+#define MWKEY_KP5 53
+#define MWKEY_KP6 54
+#define MWKEY_KP7 55
+#define MWKEY_KP8 56
+#define MWKEY_KP9 57
+#define TTY_PATH            "/dev/tty"
+#define STTY_US             "stty raw -echo -F "
+#define STTY_DEF            "stty -raw echo -F "
+
+static int get_char();
 
 typedef struct listnode {
 	char id[40];
@@ -18,7 +37,57 @@ typedef struct listnode {
 	struct listnode* prev;
 }listnode, *pnode;
 
-//³õÊ¼»¯ÏµÍ³ÖĞµÄÉÌÆ·±íÒÔ¼°ÓÎ±ê
+
+//æµ‹è¯•å‡½æ•°
+char get_key(){
+    return get_char();
+}
+
+static int get_char()
+{
+    fd_set rfds;
+    struct timeval tv;
+    int ch = 0;
+
+    FD_ZERO(&rfds);
+    FD_SET(0, &rfds);
+    tv.tv_sec = 0;
+    tv.tv_usec = 10; //è®¾ç½®ç­‰å¾…è¶…æ—¶æ—¶é—´
+
+    //æ£€æµ‹é”®ç›˜æ˜¯å¦æœ‰è¾“å…¥
+    if (select(1, &rfds, NULL, NULL, &tv) > 0)
+    {
+        ch = getchar(); 
+    }
+
+    return ch;
+}
+
+listnode test[10];
+int testinit(){
+    int i;
+    for(i=0;i<10;i++){
+        char no[10] = "test";
+        char idno[40] = "000000102580";
+        char buf[2];
+        sprintf(buf, "%d", i);
+        strcat(no, buf);
+        strcat(idno, buf);
+        strcat(idno, buf);
+        strcat(idno, buf);
+        strcat(idno, buf);
+        strcpy(test[i].name, no);
+        strcpy(test[i].id, idno);
+    }
+}
+
+pnode sqliteDB_market_select_by_id(id){
+    return &test[id];
+}
+
+
+
+//åˆå§‹åŒ–ç³»ç»Ÿä¸­çš„å•†å“è¡¨ä»¥åŠæ¸¸æ ‡
 char logbuffer[1000] = {0,};
 char kbdbuffer[50] = { 0, };
 int kbdbufcur = 0;
@@ -61,22 +130,22 @@ int viewupdate(){
     }
     printf("\t%s\t%d.%d\t%d\n", p->name, p->price/100, p->price%100, p->count);
   }
-  printf("\t----\t--------\t--------\t--------\n"); //ÎÒÊÇ·Ö¸îÏß
-  printf("\033[40;37m"); //°×µ×ºÚ×Ö¿ªÊ¼
+  printf("\t----\t--------\t--------\t--------\n"); //æˆ‘æ˜¯åˆ†å‰²çº¿
+  printf("\033[40;37m"); //ç™½åº•é»‘å­—å¼€å§‹
   printf("Total Price: %d\n", total);
-  if (s0editflag == 1) { //ÊıÁ¿±à¼­
+  if (s0editflag == 1) { //æ•°é‡ç¼–è¾‘
 	  printf("Enter new count for such item:%s", kbdbuffer);
   }
-  if (state >= 1) { //ÓÅ»İÏÔÊ¾
+  if (state >= 1) { //ä¼˜æƒ æ˜¾ç¤º
 	  if (s1editflag) {
 		  printf("(Please input)\n");
 	  }
 	  printf("Discount: %d\n", discount);
   }
-  if (state >= 2) { //»õ¿îÏÔÊ¾
+  if (state >= 2) { //è´§æ¬¾æ˜¾ç¤º
 	  printf("Recieve payment: %d\n", recv);
   }
-  printf("\033[0m"); //°×µ×ºÚ×Ö½áÊø
+  printf("\033[0m"); //ç™½åº•é»‘å­—ç»“æŸ
   if (delflag == 1) {
 	  printf("\n\t\033[31;43;5mPress DEL again to delete the item.");
   }
@@ -89,14 +158,14 @@ void log(char* content){
   strcat(logbuffer, content);
 }
 
-//É¨ÃèÇ¹µÄ¼àÌı
+//æ‰«ææªçš„ç›‘å¬
 int ListenBarcodeScanner(){
 	int BarcodeReadCount, i;
 	fflush(stdin);
 	tty_fflush();
 	fflush(stdout);
 	for(i=0;i<40;i++) id[i]=0;
-	BarcodeReadCount = tty_read(id, 40); // Ò»¶¨Òª¼ÇµÃÔÚtty.cÖĞ¸ÄÎª·Ç×èÈûÊ½´ò¿ªÉè±¸ ÒÑÍê³É
+	BarcodeReadCount = tty_read(id, 40); // ä¸€å®šè¦è®°å¾—åœ¨tty.cä¸­æ”¹ä¸ºéé˜»å¡å¼æ‰“å¼€è®¾å¤‡ å·²å®Œæˆ
 	for (i=0;i<40;i++) if (id[i]=='\n') id[i]=0;
 	//log("\nread:%d", BarcodeReadCount);
 	if (BarcodeReadCount <= 0){
@@ -106,7 +175,7 @@ int ListenBarcodeScanner(){
 	tty_fflush();
 	//log("%s\n", id);
 	for (i=0;i<40;i++) printf(" %X", id[i]);
-	pnode p = sqliteDB_market_select_by_id(id); // ÒÑ¸ã¶¨
+	pnode p = sqliteDB_market_select_by_id(id); // å·²æå®š
 	if (p != NULL){
 	addItem(p);
 	}
@@ -116,37 +185,38 @@ int ListenBarcodeScanner(){
 int ListenKeyboard(){
   char key;
   key = get_key();
+  printf("%d", key);
   if (key == MWKEY_KP_MINUS) {
-	  //´Ë¼ü¶¨ÒåÎª¡ü
+	  //æ­¤é”®å®šä¹‰ä¸ºâ†‘
 	  cur = cur->prev;
   }
   else if (key == MWKEY_KP_PLUS) {
-	  //´Ë¼ü¶¨ÒåÎª¡ı
+	  //æ­¤é”®å®šä¹‰ä¸ºâ†“
 	  cur = cur->next;
   }
   else if (key == MWKEY_KP_ENTER) {
-	  //´Ë¼ü¶¨ÒåÎª»Ø³µÈ·¶¨
+	  //æ­¤é”®å®šä¹‰ä¸ºå›è½¦ç¡®å®š
 	  if (kbdbufcur == 0) {
-		  //½×¶Î²½½ø
+		  //é˜¶æ®µæ­¥è¿›
 		  state++;
 	  }
 	  else if (state == 0) {
 		  if (s0editflag == 1) {
-			  //ÔÚÉÌÆ·ÊäÈë½×¶Î±à¼­ÊıÁ¿È·¶¨
+			  //åœ¨å•†å“è¾“å…¥é˜¶æ®µç¼–è¾‘æ•°é‡ç¡®å®š
 			  sscanf(kbdbuffer, "%d", &(cur->count));
 			  strcpy(kbdbuffer, "");
 			  kbdbufcur = 0;
 			  s0editflag = 0;
 		  }
 		  else {
-			  //ÔÚÉÌÆ·ÊäÈë½×¶ÎÈ·¶¨ÊäÈë
+			  //åœ¨å•†å“è¾“å…¥é˜¶æ®µç¡®å®šè¾“å…¥
 		      strcpy(id, kbdbuffer);
 		      strcpy(kbdbuffer, "");
 		      kbdbufcur = 0;
 		  }
 	  }
 	  else if (state == 1) {
-		  //ÔÚÓÅ»İ½×¶ÎÈ·¶¨ÓÅ»İ
+		  //åœ¨ä¼˜æƒ é˜¶æ®µç¡®å®šä¼˜æƒ 
 		  int a, b;
 		  char *as, *bs;
 		  as = strtok(kbdbuffer, ".");
@@ -161,7 +231,7 @@ int ListenKeyboard(){
 		  kbdbufcur = 0;
 	  }
 	  else if (state == 2) {
-		  //ÔÚÖ§¸¶½×¶ÎÊäÈë»õ¿î
+		  //åœ¨æ”¯ä»˜é˜¶æ®µè¾“å…¥è´§æ¬¾
 		  int a, b;
 		  char *as, *bs;
 		  as = strtok(kbdbuffer, ".");
@@ -178,7 +248,7 @@ int ListenKeyboard(){
 	  }
   }
   else if (key == MWKEY_KP_NUMLOCK) {
-	  // ´Ë¼ü¶¨ÒåÎª¸´Î»
+	  // æ­¤é”®å®šä¹‰ä¸ºå¤ä½
 	  if (rstflag == 0) {
 		  rstflag++;
 	  }
@@ -197,7 +267,7 @@ int ListenKeyboard(){
 		  discount = 0;
 		  recv = 0;
 		  cash = 0;
-		  // ÖØÖÃÁ´±í
+		  // é‡ç½®é“¾è¡¨
 		  cur = itemlist;
 		  pnode p = itemlist->next;
 		  while (p->next != NULL) {
@@ -208,7 +278,7 @@ int ListenKeyboard(){
 	  }
   }
   else if (key == MWKEY_KP_DEL) {
-	  //´Ë¼ü¶¨ÒåÎªÉ¾³ı,ÒÔ¼°ÓÅ»İÊ±µÄĞ¡Êıµã
+	  //æ­¤é”®å®šä¹‰ä¸ºåˆ é™¤,ä»¥åŠä¼˜æƒ æ—¶çš„å°æ•°ç‚¹
 	  if (state == 0) {
 		if (delflag == 0) {
 			delflag++;
@@ -224,7 +294,7 @@ int ListenKeyboard(){
 	  }
   }
   else if (key == MWKEY_KP_MULTIPLY) {
-	  //´Ë¼ü¶¨ÒåÎª±à¼­
+	  //æ­¤é”®å®šä¹‰ä¸ºç¼–è¾‘
 	  if (state == 0) {
 		  s0editflag = 1;
 	  }
@@ -236,52 +306,52 @@ int ListenKeyboard(){
 	  }
   }
   else if (key == MWKEY_KP0) {
-	  //°´¼ü0
+	  //æŒ‰é”®0
 	  kbdbuffer[kbdbufcur] = '0';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP1) {
-	  //°´¼ü1
+	  //æŒ‰é”®1
 	  kbdbuffer[kbdbufcur] = '1';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP2) {
-	  //°´¼ü2
+	  //æŒ‰é”®2
 	  kbdbuffer[kbdbufcur] = '2';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP3) {
-	  //°´¼ü3
+	  //æŒ‰é”®3
 	  kbdbuffer[kbdbufcur] = '3';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP4) {
-	  //°´¼ü4
+	  //æŒ‰é”®4
 	  kbdbuffer[kbdbufcur] = '4';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP5) {
-	  //°´¼ü5
+	  //æŒ‰é”®5
 	  kbdbuffer[kbdbufcur] = '5';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP6) {
-	  //°´¼ü6
+	  //æŒ‰é”®6
 	  kbdbuffer[kbdbufcur] = '6';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP7) {
-	  //°´¼ü7
+	  //æŒ‰é”®7
 	  kbdbuffer[kbdbufcur] = '7';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP8) {
-	  //°´¼ü8
+	  //æŒ‰é”®8
 	  kbdbuffer[kbdbufcur] = '8';
 	  kbdbufcur++;
   }
   else if (key == MWKEY_KP9) {
-	  //°´¼ü9
+	  //æŒ‰é”®9
 	  kbdbuffer[kbdbufcur] = '9';
 	  kbdbufcur++;
   }
@@ -317,12 +387,13 @@ int delItem(pnode item) {
 
 int main(){
     init();
-  kbd_init();
-  while(true){
-    ListenBarcodeScanner();
+    testinit();
+  // kbd_init();
+  while(1){
+    //ListenBarcodeScanner();
     ListenKeyboard();
     viewupdate();
    }
-  kbd_close();
+  // kbd_close();
   return 0;
 }
